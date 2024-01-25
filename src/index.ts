@@ -5,16 +5,19 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import { resolvers } from '../resolvers';
-import { typeDefs } from '../type-defs';
-import { PORT } from '../app-config';
+//import { resolvers } from '../resolvers';
+import { ProjectType } from './typeDefs';
+//import { PORT } from '../app-config';
 import { schema } from './schemas/schema'
 
+// Required logic for integrating with Express
 const app = express();
 const httpServer = http.createServer(app)
 const server = new ApolloServer(
     {
-        schema
+        schema,
+        plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
+
     }
 );
 
@@ -23,8 +26,11 @@ const startServer = async () => {
 
     app.use(
         cors(),
-        bodyParser.json(),
-        expressMiddleware(server),
+        // 50mb is the limit that `startStandaloneServer` uses, but you may configure this to suit your needs
+        bodyParser.json({ limit: '50mb' }),
+        expressMiddleware(server, {
+            context: async ({ req }) => ({ token: req.headers.token }),
+        }),
     );
 
     await new Promise<void>((resolve) => httpServer.listen({ port: 4000 }, resolve));

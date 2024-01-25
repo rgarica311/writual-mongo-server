@@ -1,0 +1,66 @@
+Arguments: 
+  /usr/local/Cellar/node/19.6.0/bin/node /Users/rorygarcia/.nvm/versions/node/v18.14.0/bin/yarn
+
+PATH: 
+  /usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Applications/Little Snitch.app/Contents/Components:/Users/rorygarcia/.nvm/versions/node/v18.14.0/bin
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  19.6.0
+
+Platform: 
+  darwin x64
+
+Trace: 
+  Error: https://storm-024758613729.d.codeartifact.us-west-2.amazonaws.com/npm/Nexus/@apollo%2fserver: Unauthenticated: request used expired credentials. Please renew your credentials.
+      at params.callback [as _callback] (/Users/rorygarcia/.nvm/versions/node/v18.14.0/lib/node_modules/yarn/lib/cli.js:66145:18)
+      at self.callback (/Users/rorygarcia/.nvm/versions/node/v18.14.0/lib/node_modules/yarn/lib/cli.js:140890:22)
+      at Request.emit (node:events:512:28)
+      at Request.<anonymous> (/Users/rorygarcia/.nvm/versions/node/v18.14.0/lib/node_modules/yarn/lib/cli.js:141862:10)
+      at Request.emit (node:events:512:28)
+      at Gunzip.<anonymous> (/Users/rorygarcia/.nvm/versions/node/v18.14.0/lib/node_modules/yarn/lib/cli.js:141784:12)
+      at Object.onceWrapper (node:events:626:28)
+      at Gunzip.emit (node:events:512:28)
+      at endReadableNT (node:internal/streams/readable:1359:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
+
+npm manifest: 
+  {
+    "name": "writual-server",
+    "version": "1.0.0",
+    "description": "Writual Server",
+    "main": "index.ts",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "start": "nodemon --exec ts-node src/index.ts"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "@babel/preset-env": "^7.20.2",
+      "@types/node": "^18.11.18",
+      "babel-cli": "6.26.0",
+      "babel-preset-stage-0": "^6.24.1",
+      "typescript": "^4.9.4"
+    },
+    "dependencies": {
+      "@apollo/server": "^4.3.0",
+      "@graphql-tools/load": "^7.8.8",
+      "@graphql-tools/schema": "^9.0.12",
+      "express": "^4.18.2",
+      "graphql": "^16.6.0",
+      "graphql-scalars": "^1.20.1",
+      "mongodb": "^4.13.0",
+      "mongoose": "^6.8.2",
+      "nodemon": "^2.0.20",
+      "ts-node": "^10.9.1"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
