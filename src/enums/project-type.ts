@@ -4,7 +4,3 @@ export enum ProjectType {
     Television,
 }
 
-export enum Outline {
-    Heros_Journey,
-    Anatomy_of_Story
-}
