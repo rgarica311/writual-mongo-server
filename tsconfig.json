@@ -7,12 +7,20 @@
         "noImplicitAny": false,
         "esModuleInterop": true,
         "moduleResolution": "node",
+        "rootDir": "src",
+        "baseUrl": "src/",
         "lib": [
             "es2022",
             "esnext.asynciterable"
-        ]
+        ],
+        "paths": {
+            "@interfaces/*": ["interfaces/*"]
+        }
     },
     "exclude": [
         "node_modules"
-    ]
+    ],
+    "ts-node": {
+        "require": ["tsconfig-paths/register"]
+    }
 }

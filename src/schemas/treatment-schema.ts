@@ -6,6 +6,6 @@ const treatmentContent = new mongoose.Schema({
 })
 
 export const treatmentSchema = new mongoose.Schema({
-    project_id: { type: String},
+    projectId: { type: String},
     versions: [treatmentContent]
 })

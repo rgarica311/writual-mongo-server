@@ -1,14 +1,13 @@
 import mongoose from "mongoose";
 import { ProjectType } from "../enums"
 import { sceneSchema, characterSchema } from "./"
-import  { outlineSchema } from "./outline-schema"
+import  { outlineFrameworkSchema } from "./outline-schema"
 import { insporationSchema } from "./insporation-schema"
 import { treatmentSchema }  from "./treatment-schema"
 import { screenplaySchema } from "./screenplay-schema"
 import { feedbackSchema } from "./feedback-schema"
 
 export const projectSchema = new mongoose.Schema({
-    id: { type: String },
     created_date:  { type: String  },
     modified_date: { type: String },
     revision:  { type: Number },
@@ -19,11 +18,13 @@ export const projectSchema = new mongoose.Schema({
     title: { type: String },
     logline:{ type:  String },
     budget: { type: Number },
-    time_period: {type: String},
-    similar_projects: [String],
+    poster: { type: String },
+    timePeriod: {type: String},
+    similarProjects: [String],
+    outlineName: { type: String },
     scenes: { type: [sceneSchema] },
     characters: { type: [characterSchema] },
-    outline: { type: outlineSchema }, 
+    outline: { type: outlineFrameworkSchema }, 
     insporation: { type: insporationSchema },  //Continue exending  project schema from here
     treatment: {type: treatmentSchema  }, 
     screenplay: { type: screenplaySchema },

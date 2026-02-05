@@ -7,7 +7,7 @@ export type CharContent = {
 }
 
 export type Character = {
-    project_id: string
+    projectId: string
     number: Number,
     details: [CharContent]
 }

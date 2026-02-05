@@ -1,37 +1,45 @@
-import { GraphQLJSON } from 'graphql-scalars'
-import { getProjectData, getAllProjectsSharedWithUser, getProjectScenes } from "../resolvers"
-import { createProject, deleteProject, shareProject, updateProject, createScene, createCharacter } from "../mutations"
+import { GraphQLJSON } from "graphql-scalars";
+import { getProjectData, getAllProjectsSharedWithUser, getProjectScenes, getOutlineFrameworks } from "../resolvers";
+import { setProjectOutline, createOutlineFramework, updateOutlineFramework, createProject, deleteProject, shareProject, updateProject, updateProjectSharedWith, createScene, createCharacter, deleteScene } from "../mutations";
 export const ProjectType = `#graphql
 
     scalar JSON
 
     type Query {
         getProjectData(input: ProjectFilters): [Project]
+        getOutlineFrameworks(user: String!): [OutlineFramework]
     }
 
     type Mutation {
+        setProjectOutline(input: OutlineInput): Outline
+        createOutlineFramework(input: OutlineFrameworkInput!): OutlineFramework
+        updateOutlineFramework(id: String!, input: OutlineFrameworkInput!): OutlineFramework
         createProject(input: ProjectInput): Project
         deleteProject(id: String): String
         shareProject(id: String, user: String): Project
-        createScene(scene: SceneInput): Scene
+        createScene(input: SceneInput): Scene
         updateProject(project: ProjectInput): Project
+        updateProjectSharedWith(projectId: String!, sharedWith: [String]): Project
         createCharacter(character: CharacterInput): Character
+        deleteScene(projectId: String!, sceneNumber: Int!): Project
     }
 
     type Project {
-        id: String!
+        _id: String!
         created_date: String
         modified_date: String
         revision: Int
         user: String!
         sharedWith: [String]
-        type: ProjectType!
-        time_period: String
+        type: ProjectType
+        timePeriod: String
         genre: String
         title: String!
         logline: String
         budget: Int
-        similar_projects: [String]
+        poster: String
+        similarProjects: [String]
+        outlineName: String
         scenes: [Scene]
         characters: [Character]
         outline: Outline
@@ -42,19 +50,21 @@ export const ProjectType = `#graphql
     }
 
     input ProjectFilters {
-        id: String
+        _id: String
         created_date: String
         modified_date: String
         revision: Int
         user: String!
         sharedWith: [String]
         type: ProjectType
-        time_period: String
+        timePeriod: String
         genre: String
         title: String
         logline: String
         budget: Int
-        similar_projects: [String]
+        poster: String
+        similarProjects: [String]
+        outlineName: String
         scenes: [SceneInput]
         characters: [CharacterInput]
         outline: OutlineInput
@@ -70,15 +80,17 @@ export const ProjectType = `#graphql
 
     input ProjectInput {
         user: String!
-        project_id: String
+        projectId: String
         sharedWith: [String]
-        type: ProjectType!
+        type: ProjectType
         genre: String
-        time_period: String
+        timePeriod: String
         title: String!
         logline: String
         budget: Int
-        similar_projects: [String]
+        poster: String
+        similarProjects: [String]
+        outlineName: String
         scenes: [SceneInput]
         characters: [CharacterInput]
         outline: OutlineInput
@@ -89,7 +101,7 @@ export const ProjectType = `#graphql
     }
 
     type Feedback  {
-        project_id: String
+        projectId: String
         user: String
         feedback_content: FeedbackContent
     }
@@ -113,37 +125,48 @@ export const ProjectType = `#graphql
         thesis: String
         antithesis: String
         synthesis: String 
-        summary: String
+        synopsis: String
         version: Int
         act: Int
         step: String
+        sceneHeading: String
+        locked: Boolean
     }
 
     input SceneContentInput {
         thesis: String
         antithesis: String
         synthesis: String 
-        summary: String
+        synopsis: String
         version: Int
         act: Int
         step: String
+        sceneHeading: String
+        locked: Boolean
     }
 
     type Scene {
-        project_id: String
+        projectId: String
         number: Int
+        activeVersion: Int
+        newVersion: Boolean
+        newScene: Boolean
         versions: [SceneContent]
     }
 
     input SceneInput {
-        project_id: String!
+        projectId: String!
         number: Int
+        activeVersion: Int
+        newVersion: Boolean
+        newScene: Boolean
         versions: [SceneContentInput]
     }
 
     type Character {
-        project_id: String
+        projectId: String
         name: String
+        imageUrl: String
         details: [CharacterDetails]
     }
 
@@ -166,8 +189,9 @@ export const ProjectType = `#graphql
     }
 
     input CharacterInput {
-        project_id: String
+        projectId: String
         name: String
+        imageUrl: String
         details: [CharacterDetailsInput]
     }
 
@@ -179,7 +203,7 @@ export const ProjectType = `#graphql
     }
 
     type Treatment {
-        project_id: String
+        projectId: String
         versions: [TreatmentContent]
     }
 
@@ -198,7 +222,7 @@ export const ProjectType = `#graphql
     }
 
     type Screenplay {
-        project_id: String
+        projectId: String
         versions: [ScreenplayContent]
     }
 
@@ -213,7 +237,7 @@ export const ProjectType = `#graphql
     }
 
     type Insporation  {
-        project_id: String
+        projectId: String
         scratch: String
         images: [String]
         videos: [String]
@@ -225,15 +249,30 @@ export const ProjectType = `#graphql
         videos: [String]
     }
 
-    type Outline {   
-            project_id: String
-            user: String
-            format: OutlineFormat 
+    type Outline {
+        projectId: String
+        user: String
+        format: OutlineFormat
+    }
+
+    type OutlineFramework {
+        id: String!
+        user: String!
+        name: String!
+        imageUrl: String
+        format: OutlineFormat
     }
 
     input OutlineInput {
-            user: String!
-            format: OutlineFormatInput
+        user: String!
+        format: OutlineFormatInput
+    }
+
+    input OutlineFrameworkInput {
+        user: String!
+        name: String!
+        imageUrl: String
+        format: OutlineFormatInput!
     }
 
     type OutlineFormat {
@@ -266,11 +305,22 @@ export const ProjectType = `#graphql
 `;
 
 export const resolvers = {
-    Query: {
-        getProjectData
-    },
-    Mutation: {
-        createProject, deleteProject, shareProject, updateProject, createScene, createCharacter
-    },
-    JSON: GraphQLJSON
-}
+  Query: {
+    getProjectData,
+    getOutlineFrameworks,
+  },
+  Mutation: {
+    setProjectOutline,
+    createOutlineFramework,
+    updateOutlineFramework,
+    createProject,
+    deleteProject,
+    shareProject,
+    updateProject,
+    updateProjectSharedWith,
+    createScene,
+    createCharacter,
+    deleteScene,
+  },
+  JSON: GraphQLJSON,
+};

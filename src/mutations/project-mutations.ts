@@ -1,10 +1,16 @@
-
-
-
-import { Projects, Scenes } from "../db-connector"
-import { insertData, deleteData, updateData } from "../helpers"
-import { getProjectData } from "../resolvers"
+import { randomUUID } from "crypto";
+import { Projects, Scenes, OutlineFrameworks } from "../db-connector";
+import {
+    insertData,
+    deleteData,
+    updateData,
+    createNewScene,
+    createNewSceneVersion,
+    updateSceneVersionInProject,
+} from "../helpers"
+import { getProjectData, getProjectScenes } from "../resolvers"
 import { Character } from "../types/character"
+import { Scene, Version } from "../interfaces";
 
 export const deleteProject = (root,  { id }) => {
     return deleteData(Projects, id)
@@ -17,17 +23,18 @@ export const createProject = (root, { input }) => {
         type: input.type,
         title: input.title,
         logline: input.logline,
-        genre: input.genre, 
+        genre: input.genre,
         budget: input.budget,
-        similar_projects: input.similar_projects,
-        scenes: input.scenes, 
+        poster: input.poster,
+        similarProjects: input.similarProjects,
+        sharedWith: input.sharedWith,
+        outlineName: input.outlineName,
+        scenes: input.scenes,
         characters: input.characters,
         outline: input.outline
     })
 
-    newProject.id = newProject._id
 
-    console.log('creating project: ', newProject)
     return insertData(newProject)
 }
 
@@ -38,55 +45,71 @@ export const shareProject = (root, { id, user }) => {
 
 export const updateProject = (root, {project})  =>  {
     console.log('project to create: ', project)
-    return updateData(Projects, {project}, project.project_id, "project")
+    return updateData(Projects, {project}, project.projectId, "project")
 }
 
-export const createScene = async (root, {scene}) => {
-    console.log('scene to create: ', scene)
-    //let scenes: any = []
-    let newSceneData = scene.versions[0]
-    const result: any = await getProjectData({}, { input: { id: scene.project_id } } )//does not work
-    console.log('result: ', result)
-    let update = result[0].scenes
-    console.log('scenes: ', JSON.stringify(update, null, '\t'))
-    if(update.length > 0) {
-        console.log('currentScenes: ', JSON.stringify(update, null, '\t'))
-        let length = update.length
-        if(!scene.number) {
-            //Scenes exist, creating  new scene
-            console.log('Scenes exist, creating  new scene')
-            scene.number = length + 1
-            scene.versions.version = 1
-        } else {
-            //Modify Scene Version
-            let sceneNum = scene.number
-            let sceneToUpdate = update.find((scene) => scene.number === sceneNum)
-            console.log('scene to update: ', JSON.stringify(sceneToUpdate, null, "\t"))
-            let numVersions = sceneToUpdate.versions.length
-            let newVersionNum = numVersions + 1
-            newSceneData.version = newVersionNum
-            sceneToUpdate.versions.push(newSceneData)
-            console.log('new scene to add: ', JSON.stringify(update, null, "\t"))
-            return updateData(Projects, { update }, scene.project_id, "scenes")
-        }
-        console.log('created scene: ', JSON.stringify(scene, null, 2))
-        update.push(scene)
-        console.log('scenes: ', update)
+export const updateProjectSharedWith = async (root, { projectId, sharedWith }) => {
+    const updated = await Projects.findOneAndUpdate(
+        { id: projectId },
+        { $set: { sharedWith: sharedWith ?? [] } },
+        { new: true }
+    );
+    return updated ?? null;
+}
 
-    } else {
-        //Create the first scene 
-        scene.number = 1
-        scene.versions[0].version = 1
-        update.push(scene)
+export const createScene = async (root, { input }) => {
+    console.log(`scene to create: ${JSON.stringify(input, null, 2)}`)
+    const scene: Scene = input
+    console.log('scene to create scene: ', scene)
+    console.log('scene to create versions: ', scene.versions)
+    let sceneVersion: Version = scene.versions[0] //get scene data
+    console.log('scene versions: ', sceneVersion)
+    let sceneNum: Number | undefined = scene.number
+    let newVersion = scene.newVersion //check if scene is a new version of existing scene: newVersion boolean
+
+    // Only when creating a brand-new scene do we fetch and replace the full scenes array
+    if(!scene.number) {
+        const scenes: any = await getProjectScenes({}, { input: { id: scene.projectId } })
+        console.log('CREATING NEW SCENE')
+        const updatedScenes = createNewScene(scene, scenes)
+        console.log('new scene to add: ', JSON.stringify(updatedScenes, null, "\t"))
+        return updateData(Projects, { updatedScenes }, scene.projectId, "scenes")
     }
-    console.log('scenes to add: ', update)
-    return updateData(Projects, {update}, scene.project_id, "scenes") //project id 
+
+    // Updating an existing scene: use positional updates so only the active version (or new version) is changed
+    const sceneNumber = Number(sceneNum)
+    console.log('sceneNum: ', sceneNumber)
+
+    const activeVersion = scene.activeVersion ?? 1
+  
+
+    console.log('UPDATING EXISTING VERSION')
+    return updateSceneVersionInProject(
+        Projects,
+        scene.projectId,
+        sceneNumber,
+        activeVersion,
+        scene.act,
+        sceneVersion
+    )
+}
+
+export const deleteScene = async (root, { projectId, sceneNumber }) => {
+    console.log('deleteScene: ', { projectId, sceneNumber })
+    // Remove the scene with the given number from the project's scenes array
+    const updatedProject = await Projects.findOneAndUpdate(
+        { id: projectId },
+        { $pull: { scenes: { number: sceneNumber } } },
+        { new: true }
+    ).exec()
+
+    return updatedProject
 }
 
 export const createCharacter = async (root, { character } )  =>  {
     console.log('character: ',  JSON.stringify(character, null, 2))
     let characterData = character.details[0]
-    const result: any = await getProjectData({}, { input: {  id: character.project_id }})
+    const result: any = await getProjectData({}, { input: {  id: character.projectId }})
     console.log('results:  ', result)
     let update = result[0].characters
     if(update.length > 0) {
@@ -103,7 +126,7 @@ export const createCharacter = async (root, { character } )  =>  {
             let newVersionNum = charVersions + 1
             characterData.version = newVersionNum
             charToUpdate.versions.push(characterData)
-            return updateData(Projects, {update}, character.project_id, "characters")
+            return updateData(Projects, {update}, character.projectId, "characters")
         }
         update.push(character)
     } else {
@@ -114,39 +137,63 @@ export const createCharacter = async (root, { character } )  =>  {
     }
     console.log('Character to add:  ', character)
     console.log('Characters:  ', update)
-    return updateData(Projects, {update}, character.project_id, "characters") //project id 
+    return updateData(Projects, {update}, character.projectId, "characters") //project id 
 
 }
 
-export const createOutline = (root, { input })  =>  {
-    const newOutline = new Projects({
-        project_id: input.project_id,
-        user: input.user,
-        format: input.format,
-    })
+/** Sets a project's outline (updates project document). */
+export const setProjectOutline = (root, { input }) => {
+  const newOutline = new Projects({
+    projectId: input.projectId,
+    user: input.user,
+    format: input.format,
+  });
+  newOutline.id = input._id;
+  return updateData(Projects, { newOutline }, input.projectId);
+};
 
-    newOutline.id = input._id
+/** Creates a standalone outline framework (user's saved template). */
+export const createOutlineFramework = (root, { input }) => {
+  const id = input.id || randomUUID();
+  const doc = new OutlineFrameworks({
+    id,
+    user: input.user,
+    name: input.name,
+    imageUrl: input.imageUrl || undefined,
+    format: input.format,
+  });
+  return insertData(doc);
+};
 
-    console.log('creating project: ', newOutline)
-    return updateData(Projects, {newOutline}, input.project_id)
-}
+/** Updates a standalone outline framework by id. */
+export const updateOutlineFramework = (root, { id, input }) => {
+  return OutlineFrameworks.findOneAndUpdate(
+    { id },
+    {
+      name: input.name,
+      imageUrl: input.imageUrl,
+      format: input.format,
+    },
+    { new: true }
+  ).exec();
+};
 
 export const createInsporation = (root, { input })  =>  {
     const newInspo = new Projects({
-        project_id: input.project_id,
+        projectId: input.projectId,
         scratch: input.scratch,
     })
 
     newInspo.id = input._id
 
     console.log('creating project: ', newInspo)
-    return updateData(Projects, {newInspo}, input.project_id)
+    return updateData(Projects, {newInspo}, input.projectId)
     
 }
 
 export const createTreatment = (root, { input })  =>  {
     const newTreatment  = new  Projects({
-        project_id: input.project_id,
+        projectId: input.projectId,
         versions: input.treatmentContent
     })
 

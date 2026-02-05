@@ -6,6 +6,6 @@ const screenplayContent = new mongoose.Schema({
 })
 
 export const screenplaySchema  = new mongoose.Schema({
-    project_id: { type: String },
+    projectId: { type: String },
     versions: { type:  [screenplayContent] }
 })

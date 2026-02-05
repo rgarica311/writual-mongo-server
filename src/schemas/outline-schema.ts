@@ -5,7 +5,7 @@ export const formatStep = new mongoose.Schema({
     name: {type: String},
     number:  {type: Number},
     act: {type:  String},
-    intructions: {type: String}
+    instructions: { type: String }
 })
 
 export const formatSchema = new mongoose.Schema({
@@ -14,9 +14,18 @@ export const formatSchema = new mongoose.Schema({
     steps: {type: [formatStep]}
 })
 
-export const  outlineSchema = new mongoose.Schema({
-   id: {type: String},
-   user: {type:  String},
-   project_id: {type: String},
-   format: {type: formatSchema}
-})
+export const outlineFrameworkSchema = new mongoose.Schema({
+  id: { type: String },
+  user: { type: String },
+  projectId: { type: String },
+  format: { type: formatSchema },
+});
+
+/** Standalone collection for user's saved outline frameworks (templates). */
+export const outlineFrameworkStandaloneSchema = new mongoose.Schema({
+  id: { type: String },
+  user: { type: String, required: true },
+  name: { type: String, required: true },
+  imageUrl: { type: String },
+  format: { type: formatSchema },
+});

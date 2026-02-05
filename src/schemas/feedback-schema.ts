@@ -6,7 +6,7 @@ const feedbackContentSchema = new mongoose.Schema({
 })
 
 export const feedbackSchema  =  new mongoose.Schema({
-    project_id: { type: String  },
+    projectId: { type: String  },
     user: { type: String },
     feedback_content: { type: [feedbackContentSchema]}
 })

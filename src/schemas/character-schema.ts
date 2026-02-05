@@ -11,8 +11,9 @@ export const charContent = new mongoose.Schema({
 })
 
 export const characterSchema = new mongoose.Schema({
-   project_id: {type: String},
-   number: {type: Number},
+   projectId: { type: String },
+   number: { type: Number },
+   imageUrl: { type: String },
    details: [charContent]
 })
 

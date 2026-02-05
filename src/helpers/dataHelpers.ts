@@ -10,7 +10,7 @@ export const getData = (model: any, params: any = {}) => {
                     reject(err);
                 }
                 else {
-                    console.log('data: ', data)
+                    console.log('data: ', JSON.stringify(data, null, 2))
                     resolve(data)
                 }
             })
@@ -19,12 +19,29 @@ export const getData = (model: any, params: any = {}) => {
     })
 }
 
+export const getScenes = (model: any, params: any = {}) => {
+    console.log('getData model: ', model)
+    console.log('getData params.input: ', params.input)
+    return new Promise((resolve, reject) => {
+        if(Object.keys(params).length) {
+            model.find( params.input, (err, data) => {
+                if(err) {
+                    reject(err);
+                }
+                else if (data.length > 0) {
+                    console.log('data: ', data)
+                    resolve(data[0].scenes)
+                } else {
+                    console.log("no scenes found")
+                    resolve([])
+                }
+            })
+        }
+
+    })
+}
+
 export const updateData = (model: any, input: any, id: string, property: string = "") => {
-    console.log('updateData model: ', model)
-    console.log('updateData id: ', {id})
-    console.log('property: ', property)
-    console.log('updateData data before update: ', JSON.stringify(input, null, "\t"))
-    //let data = update
 
     //see  if its bc the first scene has no number or version 
     return new Promise((resolve, reject) => {
@@ -34,20 +51,12 @@ export const updateData = (model: any, input: any, id: string, property: string 
         let dataObj = {}
         dataObj[property] = input[inputKeys[0]]
         console.log('d0ataObj: ', JSON.stringify(dataObj, null, 2))
-        let versions = dataObj[property][0].versions.length
-        if(property !== "project" && versions < 2) {
-            model.updateOne({id}, { $push: { [property]: dataObj[property][0]}}, {returnOriginal: true}, (err, data) => {
-                if(err) { 
-                    console.log('update error: ',  err)
-                    reject(err) 
-                }
-                else { 
-                    console.log('update data: ', data)
-                    resolve(data) 
-                }
-            })
-        } else if (property !== "project" && versions > 1) {
-            console.log('dataObj: ', JSON.stringify(dataObj, null, 2))
+        
+        if(property === "scenes") {
+            let versions = dataObj[property][0].versions.length
+            console.log('versions: ', versions)
+          
+            console.log('dataObj: ', { data: JSON.stringify(dataObj, null, 2), model, id, property })
 
             model.findOneAndUpdate({id}, dataObj, {returnOriginal: false}, (err, data) => {
                 if(err) { 
@@ -59,11 +68,24 @@ export const updateData = (model: any, input: any, id: string, property: string 
                     resolve(data) 
                 }
             })
-        } 
+            
+        }
+        
 
         else {
-            console.log('input[inputKeys[0]]: ')
-            model.findOneAndUpdate({id}, input[inputKeys[0]], {returnOriginal: false}, (err, data) => {
+            
+
+            console.log('input keys: ', Object.keys(input))
+            let inputKeys = Object.keys(input)
+            let dataObj = {}
+            dataObj[property] = input[inputKeys[0]]
+            console.log('d0ataObj: ', JSON.stringify(dataObj, null, 2))
+            model.updateOne(
+                {id}, 
+                dataObj, 
+                {
+                    returnOriginal: false
+                }, (err, data) => {
                 if(err) { 
                     console.log('findOneAndUpdate error: ',  err)
                     reject(err) 
@@ -99,3 +121,53 @@ export const deleteData = (model: any, id: any) => {
         }
     })
 }
+
+/**
+ * Update only the active version of an existing scene. Does not replace the scenes array;
+ * uses MongoDB positional operators to set only scenes[].versions[] and scene metadata.
+ */
+export const updateSceneVersionInProject = (
+    model: any,
+    projectId: string,
+    sceneNumber: number,
+    activeVersion: number,
+    act: number | undefined,
+    versionPayload: any
+) => {
+    console.log('updateSceneVersionInProject: ', { model, projectId, sceneNumber, activeVersion, act, versionPayload })
+    return new Promise( (resolve, reject) => {
+      try {
+        const objectId = new mongoose.Types.ObjectId(projectId);
+        model.findOneAndUpdate(
+            { _id: objectId, 'scenes.number': sceneNumber, 'scenes.versions.version': activeVersion },
+            { $set: { 
+                    'scenes.$[elem].versions.$[ver].sceneHeading': versionPayload.sceneHeading, 
+                    'scenes.$[elem].versions.$[ver].thesis': versionPayload.thesis, 
+                    'scenes.$[elem].versions.$[ver].antithesis': versionPayload.antithesis, 
+                    'scenes.$[elem].versions.$[ver].synthesis': versionPayload.synthesis, 
+                    'scenes.$[elem].versions.$[ver].synopsis': versionPayload.synopsis, 
+                    'scenes.$[elem].versions.$[ver].act': versionPayload.act 
+                }, 
+            },
+            {
+                arrayFilters: [
+                    { 'elem.number': sceneNumber },
+                    { 'ver.version': activeVersion },
+                ],
+                new: true,
+            },
+            (err: any, data: any) => {
+                if (err) reject(err);
+                else {
+                    resolve(data);
+                }
+            }
+        );
+      } catch (err) {
+        console.log('error updating scene version: ', err)
+        reject(err);
+      }
+      
+    });
+};
+
