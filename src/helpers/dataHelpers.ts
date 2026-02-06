@@ -20,7 +20,6 @@ export const getData = (model: any, params: any = {}) => {
             model.find(query, (err: any, data: any) => {
                 if (err) reject(err)
                 else {
-                    console.log('data: ', JSON.stringify(data, null, 2))
                     resolve(data)
                 }
             })
@@ -42,15 +41,13 @@ export const getScenes = (model: any, params: any = {}) => {
 }
 
 export const updateData = (model: any, input: any, id: string, property: string = "") => {
-
+    console.log('running updateData with input: ', input, 'id: ', id, 'property: ', property)
     //see  if its bc the first scene has no number or version 
     return new Promise((resolve, reject) => {
        // console.log('propertyAndData: ', JSON.stringify(propertyAndData, null, "\t"))
-       console.log('input keys: ', Object.keys(input))
         let inputKeys = Object.keys(input)
         let dataObj = {}
         dataObj[property] = input[inputKeys[0]]
-        console.log('d0ataObj: ', JSON.stringify(dataObj, null, 2))
         
         const projectFilter = mongoose.Types.ObjectId.isValid(id)
             ? { _id: new mongoose.Types.ObjectId(id) }
@@ -100,31 +97,37 @@ export const deleteData = (model: any, id: any) => {
  */
 export const updateSceneVersionInProject = (
     model: any,
+    scenes: any,
     _id: string,
     sceneNumber: number,
     activeVersion: number,
     act: number | undefined,
     versionPayload: any
 ) => {
-    console.log('updateSceneVersionInProject: ', { _id, model, sceneNumber, activeVersion, act, versionPayload })
-    return new Promise( (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       try {
+        if (!mongoose.Types.ObjectId.isValid(_id)) {
+            console.log('Invalid project _id: ', _id)
+          reject(new Error(`Invalid project _id: ${_id}`));
+          return;
+        }
         const objectId = new mongoose.Types.ObjectId(_id);
+        const $set: Record<string, any> = {
+          'scenes.$[elem].versions': [...scenes[sceneNumber].versions, versionPayload],
+        };
+        if (versionPayload?.act !== undefined && versionPayload?.act !== null) {
+          $set['scenes.$[elem].versions.$[ver].act'] = versionPayload.act;
+        }
+        const sn = Number(sceneNumber);
+        const av = Number(activeVersion);
+        console.log('Updating scene version: ', { _id, sceneNumber, activeVersion, act: versionPayload?.act, version: versionPayload })
         model.findOneAndUpdate(
-            { _id: objectId, 'scenes.number': sceneNumber, 'scenes.versions.version': activeVersion },
-            { $set: { 
-                    'scenes.$[elem].versions.$[ver].sceneHeading': versionPayload.sceneHeading, 
-                    'scenes.$[elem].versions.$[ver].thesis': versionPayload.thesis, 
-                    'scenes.$[elem].versions.$[ver].antithesis': versionPayload.antithesis, 
-                    'scenes.$[elem].versions.$[ver].synthesis': versionPayload.synthesis, 
-                    'scenes.$[elem].versions.$[ver].synopsis': versionPayload.synopsis, 
-                    'scenes.$[elem].versions.$[ver].act': versionPayload.act 
-                }, 
-            },
+            { _id: objectId, 'scenes.number': sn },
+            { $set },
             {
                 arrayFilters: [
-                    { 'elem.number': sceneNumber },
-                    { 'ver.version': activeVersion },
+                    { 'elem.number': sn },
+                    { 'ver.version': av },
                 ],
                 new: true,
             },

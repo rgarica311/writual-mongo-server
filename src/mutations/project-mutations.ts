@@ -62,18 +62,21 @@ export const updateProjectSharedWith = async (root, { projectId, sharedWith }) =
 }
 
 export const createScene = async (root, { input }) => {
-    console.log(`scene to create: ${JSON.stringify(input, null, 2)}`)
     const scene: Scene = input
-    console.log('scene to create scene: ', scene)
-    console.log('scene to create versions: ', scene.versions)
     let sceneVersion: Version = scene.versions[0] //get scene data
-    console.log('scene versions: ', sceneVersion)
     let sceneNum: Number | undefined = scene.number
-    let newVersion = scene.newVersion //check if scene is a new version of existing scene: newVersion boolean
+
+    console.log('running createScene: ', { 
+        _id: scene._id, 
+        scene: {...scene, versions: scene.versions},
+        sceneNum, 
+        act: scene.act, 
+        version: sceneVersion 
+    })
+    const scenes: any = await getProjectScenes({}, { input: { _id: scene._id } })
 
     // Only when creating a brand-new scene do we fetch and replace the full scenes array
     if(!scene.number) {
-        const scenes: any = await getProjectScenes({}, { input: { _id: scene._id } })
         console.log('CREATING NEW SCENE')
         const updatedScenes = createNewScene(scene, scenes)
         console.log('new scene to add: ', JSON.stringify(updatedScenes, null, "\t"))
@@ -86,10 +89,10 @@ export const createScene = async (root, { input }) => {
 
     const activeVersion = scene.activeVersion ?? 1
   
-
-    console.log('UPDATING EXISTING VERSION')
+    console.log('UPDATING EXISTING VERSION: ', { _id: scene._id, sceneNumber, activeVersion, act: scene.act, version: sceneVersion })
     return updateSceneVersionInProject(
         Projects,
+        scenes,
         scene._id,
         sceneNumber,
         activeVersion,
