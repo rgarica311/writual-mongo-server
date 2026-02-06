@@ -15,8 +15,9 @@ export const sceneContent = new mongoose.Schema({
 export const sceneSchema = new mongoose.Schema({
     projectId: {type: String},
     number: {type: Number},
-    activeVersion: {type: Number}, 
-    newVersion: {type: Boolean}, 
+    activeVersion: {type: Number},
+    lockedVersion: {type: Number},
+    newVersion: {type: Boolean},
     newScene: {type: Boolean},
     versions: [sceneContent]
 })

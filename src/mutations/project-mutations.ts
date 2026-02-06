@@ -92,7 +92,8 @@ export const createScene = async (root, { input }) => {
         sceneNumber,
         activeVersion,
         scene.act,
-        sceneVersion
+        sceneVersion,
+        scene.lockedVersion ?? null
     )
 }
 

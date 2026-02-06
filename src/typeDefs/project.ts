@@ -149,6 +149,7 @@ export const ProjectType = `#graphql
         projectId: String
         number: Int
         activeVersion: Int
+        lockedVersion: Int
         newVersion: Boolean
         newScene: Boolean
         versions: [SceneContent]
@@ -158,6 +159,7 @@ export const ProjectType = `#graphql
         _id: String
         number: Int
         activeVersion: Int
+        lockedVersion: Int
         newVersion: Boolean
         newScene: Boolean
         versions: [SceneContentInput]

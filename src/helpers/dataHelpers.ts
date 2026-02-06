@@ -92,7 +92,7 @@ export const deleteData = (model: any, id: any) => {
 }
 
 /**
- * Update only the active version of an existing scene (in-place). Also sets scene.activeVersion.
+ * Update only the active version of an existing scene (in-place). Also sets scene.activeVersion and scene.lockedVersion.
  */
 export const updateSceneVersionInProject = (
     model: any,
@@ -100,7 +100,8 @@ export const updateSceneVersionInProject = (
     sceneNumber: number,
     activeVersion: number,
     act: number | undefined,
-    versionPayload: any
+    versionPayload: any,
+    lockedVersion: number | null | undefined
 ) => {
     return new Promise((resolve, reject) => {
       try {
@@ -123,9 +124,16 @@ export const updateSceneVersionInProject = (
         if (versionPayload?.act !== undefined && versionPayload?.act !== null) {
           $set['scenes.$[elem].versions.$[ver].act'] = versionPayload.act;
         }
+        if (lockedVersion !== undefined && lockedVersion !== null) {
+          $set['scenes.$[elem].lockedVersion'] = lockedVersion;
+        }
+        const update: Record<string, any> = { $set };
+        if (lockedVersion === undefined || lockedVersion === null) {
+          update.$unset = { 'scenes.$[elem].lockedVersion': 1 };
+        }
         model.findOneAndUpdate(
             { _id: objectId, 'scenes.number': sn, 'scenes.versions.version': av },
-            { $set },
+            update,
             {
                 arrayFilters: [
                     { 'elem.number': sn },
