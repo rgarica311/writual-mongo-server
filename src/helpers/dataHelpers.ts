@@ -1,43 +1,43 @@
 import mongoose from "mongoose"
 
+/** Build find query from input; project lookup uses MongoDB _id (supports input.id or input._id). */
+function projectQueryFromInput(input: any): any {
+    if (!input || typeof input !== 'object') return input
+    const query = { ...input }
+    if (query.id != null) {
+        query._id = mongoose.Types.ObjectId.isValid(query.id) ? new mongoose.Types.ObjectId(query.id) : query.id
+        delete query.id
+    } else if (query._id != null && typeof query._id === 'string') {
+        query._id = mongoose.Types.ObjectId.isValid(query._id) ? new mongoose.Types.ObjectId(query._id) : query._id
+    }
+    return query
+}
+
 export const getData = (model: any, params: any = {}) => {
-    //console.log('getData model: ', model)
-    //console.log('getData params: ', params)
     return new Promise((resolve, reject) => {
-        if(Object.keys(params).length) {
-            model.find( params.input, (err, data) => {
-                if(err) { 
-                    reject(err);
-                }
+        if (Object.keys(params).length && params.input) {
+            const query = projectQueryFromInput(params.input)
+            model.find(query, (err: any, data: any) => {
+                if (err) reject(err)
                 else {
                     console.log('data: ', JSON.stringify(data, null, 2))
                     resolve(data)
                 }
             })
-        } 
-        
+        }
     })
 }
 
 export const getScenes = (model: any, params: any = {}) => {
-    console.log('getData model: ', model)
-    console.log('getData params.input: ', params.input)
     return new Promise((resolve, reject) => {
-        if(Object.keys(params).length) {
-            model.find( params.input, (err, data) => {
-                if(err) {
-                    reject(err);
-                }
-                else if (data.length > 0) {
-                    console.log('data: ', data)
-                    resolve(data[0].scenes)
-                } else {
-                    console.log("no scenes found")
-                    resolve([])
-                }
+        if (Object.keys(params).length && params.input) {
+            const query = projectQueryFromInput(params.input)
+            model.find(query, (err: any, data: any) => {
+                if (err) reject(err)
+                else if (data.length > 0) resolve(data[0].scenes)
+                else resolve([])
             })
         }
-
     })
 }
 
@@ -52,48 +52,19 @@ export const updateData = (model: any, input: any, id: string, property: string 
         dataObj[property] = input[inputKeys[0]]
         console.log('d0ataObj: ', JSON.stringify(dataObj, null, 2))
         
-        if(property === "scenes") {
-            let versions = dataObj[property][0].versions.length
-            console.log('versions: ', versions)
-          
-            console.log('dataObj: ', { data: JSON.stringify(dataObj, null, 2), model, id, property })
+        const projectFilter = mongoose.Types.ObjectId.isValid(id)
+            ? { _id: new mongoose.Types.ObjectId(id) }
+            : { _id: id }
 
-            model.findOneAndUpdate({id}, dataObj, {returnOriginal: false}, (err, data) => {
-                if(err) { 
-                    console.log('findOneAndUpdate error: ',  err)
-                    reject(err) 
-                }
-                else { 
-                    console.log('findOneAndUpdate data: ', data)
-                    resolve(data) 
-                }
+        if (property === "scenes") {
+            model.findOneAndUpdate(projectFilter, dataObj, { new: true }, (err: any, data: any) => {
+                if (err) reject(err)
+                else resolve(data)
             })
-            
-        }
-        
-
-        else {
-            
-
-            console.log('input keys: ', Object.keys(input))
-            let inputKeys = Object.keys(input)
-            let dataObj = {}
-            dataObj[property] = input[inputKeys[0]]
-            console.log('d0ataObj: ', JSON.stringify(dataObj, null, 2))
-            model.updateOne(
-                {id}, 
-                dataObj, 
-                {
-                    returnOriginal: false
-                }, (err, data) => {
-                if(err) { 
-                    console.log('findOneAndUpdate error: ',  err)
-                    reject(err) 
-                }
-                else { 
-                    console.log('findOneAndUpdate data: ', data)
-                    resolve(data) 
-                }
+        } else {
+            model.updateOne(projectFilter, dataObj, { new: true }, (err: any, data: any) => {
+                if (err) reject(err)
+                else resolve(data)
             })
         }
         
@@ -111,12 +82,13 @@ export const insertData = (data: any) => {
 }
 
 export const deleteData = (model: any, id: any) => {
-    return new Promise( async (resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         try {
-            await model.deleteOne({id})
-            resolve(`deleted id: ${id}`)
+            const filter = mongoose.Types.ObjectId.isValid(id) ? { _id: new mongoose.Types.ObjectId(id) } : { _id: id }
+            await model.deleteOne(filter)
+            resolve(`deleted _id: ${id}`)
         } catch (err) {
-            console.log(`error delting ${id}: `, err)
+            console.log(`error deleting ${id}: `, err)
             reject(err)
         }
     })
@@ -128,16 +100,16 @@ export const deleteData = (model: any, id: any) => {
  */
 export const updateSceneVersionInProject = (
     model: any,
-    projectId: string,
+    _id: string,
     sceneNumber: number,
     activeVersion: number,
     act: number | undefined,
     versionPayload: any
 ) => {
-    console.log('updateSceneVersionInProject: ', { model, projectId, sceneNumber, activeVersion, act, versionPayload })
+    console.log('updateSceneVersionInProject: ', { _id, model, sceneNumber, activeVersion, act, versionPayload })
     return new Promise( (resolve, reject) => {
       try {
-        const objectId = new mongoose.Types.ObjectId(projectId);
+        const objectId = new mongoose.Types.ObjectId(_id);
         model.findOneAndUpdate(
             { _id: objectId, 'scenes.number': sceneNumber, 'scenes.versions.version': activeVersion },
             { $set: { 

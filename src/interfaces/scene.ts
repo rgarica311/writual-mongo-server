@@ -10,7 +10,7 @@ export interface Version {
 }
 export interface Scene {
     act: number
-    projectId: string
+    _id: string
     number?: number
     activeVersion?: number
     lockedVersion?: number

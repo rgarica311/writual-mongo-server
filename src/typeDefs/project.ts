@@ -155,7 +155,7 @@ export const ProjectType = `#graphql
     }
 
     input SceneInput {
-        projectId: String!
+        _id: String
         number: Int
         activeVersion: Int
         newVersion: Boolean

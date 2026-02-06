@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import mongoose from "mongoose";
 import { Projects, Scenes, OutlineFrameworks } from "../db-connector";
 import {
     insertData,
@@ -49,8 +50,11 @@ export const updateProject = (root, {project})  =>  {
 }
 
 export const updateProjectSharedWith = async (root, { projectId, sharedWith }) => {
+    const filter = mongoose.Types.ObjectId.isValid(projectId)
+        ? { _id: new mongoose.Types.ObjectId(projectId) }
+        : { _id: projectId };
     const updated = await Projects.findOneAndUpdate(
-        { id: projectId },
+        filter,
         { $set: { sharedWith: sharedWith ?? [] } },
         { new: true }
     );
@@ -69,11 +73,11 @@ export const createScene = async (root, { input }) => {
 
     // Only when creating a brand-new scene do we fetch and replace the full scenes array
     if(!scene.number) {
-        const scenes: any = await getProjectScenes({}, { input: { id: scene.projectId } })
+        const scenes: any = await getProjectScenes({}, { input: { _id: scene._id } })
         console.log('CREATING NEW SCENE')
         const updatedScenes = createNewScene(scene, scenes)
         console.log('new scene to add: ', JSON.stringify(updatedScenes, null, "\t"))
-        return updateData(Projects, { updatedScenes }, scene.projectId, "scenes")
+        return updateData(Projects, { updatedScenes }, scene._id, "scenes")
     }
 
     // Updating an existing scene: use positional updates so only the active version (or new version) is changed
@@ -86,7 +90,7 @@ export const createScene = async (root, { input }) => {
     console.log('UPDATING EXISTING VERSION')
     return updateSceneVersionInProject(
         Projects,
-        scene.projectId,
+        scene._id,
         sceneNumber,
         activeVersion,
         scene.act,
@@ -96,14 +100,16 @@ export const createScene = async (root, { input }) => {
 
 export const deleteScene = async (root, { projectId, sceneNumber }) => {
     console.log('deleteScene: ', { projectId, sceneNumber })
-    // Remove the scene with the given number from the project's scenes array
+    const filter = mongoose.Types.ObjectId.isValid(projectId)
+        ? { _id: new mongoose.Types.ObjectId(projectId) }
+        : { _id: projectId };
     const updatedProject = await Projects.findOneAndUpdate(
-        { id: projectId },
+        filter,
         { $pull: { scenes: { number: sceneNumber } } },
         { new: true }
-    ).exec()
+    ).exec();
 
-    return updatedProject
+    return updatedProject;
 }
 
 export const createCharacter = async (root, { character } )  =>  {
