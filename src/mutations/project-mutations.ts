@@ -6,8 +6,8 @@ import {
     deleteData,
     updateData,
     createNewScene,
-    createNewSceneVersion,
     updateSceneVersionInProject,
+    updateSceneAddVersionInProject,
 } from "../helpers"
 import { getProjectData, getProjectScenes } from "../resolvers"
 import { Character } from "../types/character"
@@ -63,36 +63,31 @@ export const updateProjectSharedWith = async (root, { projectId, sharedWith }) =
 
 export const createScene = async (root, { input }) => {
     const scene: Scene = input
-    let sceneVersion: Version = scene.versions[0] //get scene data
-    let sceneNum: Number | undefined = scene.number
+    const sceneVersion: Version = scene.versions?.[0]
+    const sceneNum: Number | undefined = scene.number
+    const newVersion = !!scene.newVersion
 
-    console.log('running createScene: ', { 
-        _id: scene._id, 
-        scene: {...scene, versions: scene.versions},
-        sceneNum, 
-        act: scene.act, 
-        version: sceneVersion 
-    })
-    const scenes: any = await getProjectScenes({}, { input: { _id: scene._id } })
-
-    // Only when creating a brand-new scene do we fetch and replace the full scenes array
-    if(!scene.number) {
-        console.log('CREATING NEW SCENE')
+    if (!scene.number) {
+        const scenes: any = await getProjectScenes({}, { input: { _id: scene._id } })
         const updatedScenes = createNewScene(scene, scenes)
-        console.log('new scene to add: ', JSON.stringify(updatedScenes, null, "\t"))
         return updateData(Projects, { updatedScenes }, scene._id, "scenes")
     }
 
-    // Updating an existing scene: use positional updates so only the active version (or new version) is changed
     const sceneNumber = Number(sceneNum)
-    console.log('sceneNum: ', sceneNumber)
-
     const activeVersion = scene.activeVersion ?? 1
-  
-    console.log('UPDATING EXISTING VERSION: ', { _id: scene._id, sceneNumber, activeVersion, act: scene.act, version: sceneVersion })
+
+    if (newVersion && sceneVersion) {
+        return updateSceneAddVersionInProject(
+            Projects,
+            scene._id,
+            sceneNumber,
+            sceneVersion,
+            activeVersion
+        )
+    }
+
     return updateSceneVersionInProject(
         Projects,
-        scenes,
         scene._id,
         sceneNumber,
         activeVersion,

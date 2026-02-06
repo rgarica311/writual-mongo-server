@@ -92,12 +92,10 @@ export const deleteData = (model: any, id: any) => {
 }
 
 /**
- * Update only the active version of an existing scene. Does not replace the scenes array;
- * uses MongoDB positional operators to set only scenes[].versions[] and scene metadata.
+ * Update only the active version of an existing scene (in-place). Also sets scene.activeVersion.
  */
 export const updateSceneVersionInProject = (
     model: any,
-    scenes: any,
     _id: string,
     sceneNumber: number,
     activeVersion: number,
@@ -107,22 +105,26 @@ export const updateSceneVersionInProject = (
     return new Promise((resolve, reject) => {
       try {
         if (!mongoose.Types.ObjectId.isValid(_id)) {
-            console.log('Invalid project _id: ', _id)
           reject(new Error(`Invalid project _id: ${_id}`));
           return;
         }
         const objectId = new mongoose.Types.ObjectId(_id);
+        const sn = Number(sceneNumber);
+        const av = Number(activeVersion);
         const $set: Record<string, any> = {
-          'scenes.$[elem].versions': [...scenes[sceneNumber].versions, versionPayload],
+          'scenes.$[elem].activeVersion': av,
+          'scenes.$[elem].versions.$[ver].sceneHeading': versionPayload?.sceneHeading ?? '',
+          'scenes.$[elem].versions.$[ver].thesis': versionPayload?.thesis ?? '',
+          'scenes.$[elem].versions.$[ver].antithesis': versionPayload?.antithesis ?? '',
+          'scenes.$[elem].versions.$[ver].synthesis': versionPayload?.synthesis ?? '',
+          'scenes.$[elem].versions.$[ver].synopsis': versionPayload?.synopsis ?? '',
+          'scenes.$[elem].versions.$[ver].step': versionPayload?.step ?? '',
         };
         if (versionPayload?.act !== undefined && versionPayload?.act !== null) {
           $set['scenes.$[elem].versions.$[ver].act'] = versionPayload.act;
         }
-        const sn = Number(sceneNumber);
-        const av = Number(activeVersion);
-        console.log('Updating scene version: ', { _id, sceneNumber, activeVersion, act: versionPayload?.act, version: versionPayload })
         model.findOneAndUpdate(
-            { _id: objectId, 'scenes.number': sn },
+            { _id: objectId, 'scenes.number': sn, 'scenes.versions.version': av },
             { $set },
             {
                 arrayFilters: [
@@ -133,16 +135,51 @@ export const updateSceneVersionInProject = (
             },
             (err: any, data: any) => {
                 if (err) reject(err);
-                else {
-                    resolve(data);
-                }
+                else resolve(data);
             }
         );
       } catch (err) {
-        console.log('error updating scene version: ', err)
         reject(err);
       }
-      
+    });
+};
+
+/**
+ * Add a new version to an existing scene and set it as active.
+ */
+export const updateSceneAddVersionInProject = (
+    model: any,
+    _id: string,
+    sceneNumber: number,
+    newVersionPayload: any,
+    activeVersion: number
+) => {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!mongoose.Types.ObjectId.isValid(_id)) {
+          reject(new Error(`Invalid project _id: ${_id}`));
+          return;
+        }
+        const objectId = new mongoose.Types.ObjectId(_id);
+        const sn = Number(sceneNumber);
+        model.findOneAndUpdate(
+            { _id: objectId, 'scenes.number': sn },
+            {
+              $push: { 'scenes.$[elem].versions': newVersionPayload },
+              $set: { 'scenes.$[elem].activeVersion': activeVersion },
+            },
+            {
+                arrayFilters: [{ 'elem.number': sn }],
+                new: true,
+            },
+            (err: any, data: any) => {
+                if (err) reject(err);
+                else resolve(data);
+            }
+        );
+      } catch (err) {
+        reject(err);
+      }
     });
 };
 
